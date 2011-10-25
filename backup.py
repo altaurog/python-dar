@@ -4,7 +4,34 @@ import socket
 
 from datetime import datetime
 
-from iterpipes import check_call, cmd, run
+from iterpipes import call, cmd
+
+
+"""
+TODO:
+    incremental archives 
+    automate archive test
+    add archives to dar_manager db
+    test restore procedure
+    call par2 on archives
+    upload selected archives (home dirs) to amazon s3
+    backup remote systems, both linux and windows
+    build dar 2.4.2 and use that
+    don't use iterpipes
+
+    monthly/weekly TOH, start on first Sat of month:
+
+        S S M T W T F
+        -------------
+        0 3 2 5 4 7 6 
+        1 3 2 5 4 7 6 
+        1 3 2 5 4 7 6 
+        1 3 2 5 4 7 6 
+       (1 3 2 5 4 7 6)
+
+    from Preston, W. Curtis.  Unix Backup & Recovery.  O'Reilly, 1999.  p.41
+    [modified to start on Saturday]
+"""
 
 def get_timestamp():
     # timezone = pytz.timezone('Asia/Jerusalem') # don't waste time on this now
@@ -57,8 +84,7 @@ def backup(batch, reference=None):
         # Reference previous backup archive/catalog
         args.extend(['--ref', reference])
 
-    check_call(make_command('dar', args,
-                            logfile=os.path.join(path, logfile)))
+    call(make_command('dar', args, logfile=os.path.join(path, logfile)))
 
 
 if __name__ == '__main__':
