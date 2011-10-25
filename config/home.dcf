@@ -1,0 +1,21 @@
+# Dar Comand File for system backup
+# with inspiration from http://www.halfgaar.net/backing-up-unix
+#
+
+--fs-root /home
+
+# use case-insensitive matching
+-an
+
+# include everything but the following exceptions:
+--prune lost+found
+
+# http://askubuntu.com/questions/28477/what-is-safe-to-exclude-for-a-full-system-backup
+--prune .gvfs
+--prune .mozilla/firefox/*/Cache
+--prune .cache/chromium
+--prune .thumbnails
+--prune .local/share/Trash
+
+-X Thumbs.db
+

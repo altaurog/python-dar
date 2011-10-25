@@ -1,0 +1,18 @@
+# don't read config files, everything is here
+--noconf 
+
+--slice 200M
+
+# update atime and not ctime
+--alter=atime
+
+# create empty placeholder directories for excluded directories
+--empty-dir
+
+# unsupported in dar v2.3.9
+# --min-digits 4
+# create an md5 hash of each slice
+# --hash
+# use par to protect file integrity
+# --execute "par2 c \"%p/%b.%N.par2\" \"%p/%b.%N.%e\""
+

@@ -1,0 +1,27 @@
+# compression
+-y6
+
+# don't bother trying to compress these
+-Z "*.pdf" 
+-Z "*.gif" 
+-Z "*.png" 
+-Z "*.tif" 
+-Z "*.tiff" 
+-Z "*.jpg" 
+-Z "*.jpeg" 
+-Z "*.ogg" 
+-Z "*.avi" 
+-Z "*.mp?" 
+-Z "*.pk3" 
+-Z "*.flac" 
+-Z "*.zip" 
+-Z "*.tgz"
+-Z "*.gz" 
+-Z "*.gzip" 
+-Z "*.bz2" 
+-Z "*.bzip2" 
+-Z "*.mov" 
+-Z "*.rar" 
+-Z "*.jar"
+
+

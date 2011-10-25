@@ -1,0 +1,80 @@
+# Dar Comand File for system backup
+# with inspiration from http://www.halfgaar.net/backing-up-unix
+#
+# don't read config files, everything is here
+--noconf 
+
+--fs-root /
+--slice 200M
+
+# unsupported in dar v2.3.9
+# --min-digits 4
+# create an md5 hash of each slice
+# --hash
+# use par to protect file integrity
+# --execute "par2 c \"%p/%b.%N.par2\" \"%p/%b.%N.%e\""
+
+# compression
+-y6
+
+# update atime and not ctime
+--alter=atime
+
+# create empty placeholder directories for excluded directories
+--empty-dir
+
+# use case-insensitive matching
+-an
+
+# include everything but the following exceptions:
+--prune lost+found
+--prune */lost+found
+--prune dev
+--prune proc
+--prune sys
+--prune tmp
+--prune backup
+--prune var/lib/postgresql/
+--prune var/cache/apt/archives/
+
+# maybe?
+--prune var/lib/apt
+--prune var/lib/dpkg
+--prune var/lib/apt-xapian-index
+
+# http://askubuntu.com/questions/28477/what-is-safe-to-exclude-for-a-full-system-backup
+--prune home/*/.gvfs
+--prune home/*/.mozilla/firefox/*/Cache
+--prune home/*/.cache/chromium
+--prune home/*/.thumbnails
+--prune home/*/.local/share/Trash
+--prune var/run
+--prune var/lock
+--prune lib/modules/*/volatile/.mounted
+
+-X Thumbs.db
+
+
+# don't bother trying to compress these
+-Z "*.pdf" 
+-Z "*.gif" 
+-Z "*.png" 
+-Z "*.tif" 
+-Z "*.tiff" 
+-Z "*.jpg" 
+-Z "*.jpeg" 
+-Z "*.ogg" 
+-Z "*.avi" 
+-Z "*.mp?" 
+-Z "*.pk3" 
+-Z "*.flac" 
+-Z "*.zip" 
+-Z "*.tgz"
+-Z "*.gz" 
+-Z "*.gzip" 
+-Z "*.bz2" 
+-Z "*.bzip2" 
+-Z "*.mov" 
+-Z "*.rar" 
+-Z "*.jar"
+
