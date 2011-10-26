@@ -68,7 +68,6 @@ def backup(batch, reference=None):
     catalog = '{0}-catalog'.format(basename)
     logfile = '{0}-log'.format(basename)
 
-    dcf = get_dcf()
     args = [
         # create an archive
         '--create', os.path.join(path, basename),
@@ -77,6 +76,7 @@ def backup(batch, reference=None):
         '--on-fly-isolate', os.path.join(path, catalog),
     ]
 
+    dcf = get_dcf()
     for b in ('c-base', 'encryptionkey', 'compression', batch):
         args.extend(['--batch', dcf[b],])
 
