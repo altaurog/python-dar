@@ -1,2 +1,6 @@
 syntax: glob
 *encryptionkey*
+
+syntax: regexp
+^archives/
+^sandbox/
