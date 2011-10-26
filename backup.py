@@ -19,7 +19,6 @@ except ImportError:
 
 """
 TODO:
-    automate archive test
     add archives to dar_manager db
     test restore procedure
     call par2 on archives
@@ -98,12 +97,22 @@ class LocalHost(object):
             args.extend(['--ref', reference])
 
         log_execution(args, self.config.dry_run)
+
+        if self.config.dry_run:
+            return
         
         if self.level is not None and catalog.exists():
             self.level_manager.add(self.level, host, name, catalog)
             self.level_manager.dump()
-        else:
-            print_f("Catalog {0} not generated!", catalog.first_slice())
+        elif self.config.dry_run:
+            warn("Catalog {0} not generated!", catalog.first_slice())
+
+        if not archive.exists():
+            raise RuntimeError("Archive not created")
+
+        args = [ 'dar', '--test', archive, '--batch', dcf['encryptionkey'], ]
+        if 0 != log_execution(args):
+            raise RuntimeError("Archive failed integrity test")
 
 def quote_command(cmd, *args):
     return ' ' + ' '.join([cmd] + map(quote, args))
@@ -203,10 +212,11 @@ def print_f(template, *args, **kwargs):
     print(template.format(*args, **kwargs))
 
 def log_execution(args, dry_run=False):
-        print_f('executing command:\n' + quote_command(*args))
-        if not dry_run:
-            return_code = subprocess.call(args, stderr = subprocess.STDOUT)
-            print_f("{0} returned: {1:d}\n", args[0], return_code)
+    print_f('executing command:\n' + quote_command(*args))
+    if not dry_run:
+        return_code = subprocess.call(args, stderr = subprocess.STDOUT)
+        print_f("{0} returned: {1:d}\n", args[0], return_code)
+        return return_code
 
 def main():
     config = BackupConfig()
