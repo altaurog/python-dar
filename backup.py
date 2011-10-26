@@ -1,14 +1,17 @@
 #!/usr/bin/env python
-# requires python 2.6 - 3.x
+# requires python 2.6 - 2.7
+# python 3 doesn't seem to like the unbuffered i/o
 from __future__ import print_function
 
+import calendar
 import csv
 import os
 import subprocess
 import socket
 import sys
 
-from datetime import datetime
+from datetime import date, datetime
+from glob     import glob
 from optparse import OptionParser
 from warnings import warn
 
@@ -21,23 +24,10 @@ except ImportError:
 TODO:
     add archives to dar_manager db
     test restore procedure
-    call par2 on archives
     upload selected archives (home dirs) to amazon s3
     backup remote systems, both linux and windows
     build dar 2.4.2 and use that
 
-    monthly/weekly TOH, start on first Sat of month:
-
-        S S M T W T F
-        -------------
-        0 3 2 5 4 7 6 
-        1 3 2 5 4 7 6 
-        1 3 2 5 4 7 6 
-        1 3 2 5 4 7 6 
-       (1 3 2 5 4 7 6)
-
-    from Preston, W. Curtis.  Unix Backup & Recovery.  O'Reilly, 1999.  p.41
-    [modified to start on Saturday]
 """
 
 
@@ -65,8 +55,13 @@ class SliceSet(str):
     def exists(self):
         return os.path.exists(self.first_slice())
 
+    def slices(self):
+        return glob(self + '.*.dar')
+
 class LocalHost(object):
     def __init__(self, config):
+        if config.options.dump_config:
+            print(config.options)
         self.config = config
         self.level = config.level
         self.level_manager = LevelManager(config.archive_dir)
@@ -90,7 +85,7 @@ class LocalHost(object):
             if reference is not None:
                 warn("Backup level and reference specified; ignoring reference")
             reference = self.level_manager.get_ref_for_level(self.level, host, name)
-            print("level: {0!r}\nref: {1!r}\n".format(self.level, reference))
+            print_f("level: {0!r}\nref: {1!r}\n", self.level, reference)
 
         if reference:
             # Reference previous backup archive/catalog
@@ -110,9 +105,14 @@ class LocalHost(object):
         if not archive.exists():
             raise RuntimeError("Archive not created")
 
-        args = [ 'dar', '--test', archive, '--batch', dcf['encryptionkey'], ]
-        if 0 != log_execution(args):
+        if 0 != log_execution([ 'dar', '--test', archive, '--batch', dcf['encryptionkey'], ]):
             raise RuntimeError("Archive failed integrity test")
+
+        if self.config.no_par2:
+            return
+        for dar_slice in archive.slices():
+            if 0 != log_execution(['par2', 'create', '-qq', '-n4', dar_slice[:-4], dar_slice ]):
+                raise RuntimeError("Failed to create parchive redundancy files")
 
 def quote_command(cmd, *args):
     return ' ' + ' '.join([cmd] + map(quote, args))
@@ -128,7 +128,6 @@ class LevelManager(object):
 
     def __init__(self, path):
         self.dbfile = os.path.join(path, 'levels.db')
-        print_f("writing {0}", self.dbfile)
         self.levels = {}
         if os.path.exists(self.dbfile):
             self.load()
@@ -155,6 +154,7 @@ class LevelManager(object):
                 self._add(*record)
 
     def dump(self):
+        print_f("writing {0}", self.dbfile)
         with open(self.dbfile, "w") as f:
             writer = csv.writer(f, self.dialect)
             for record in self:
@@ -171,6 +171,40 @@ class LevelManager(object):
         hn_dict[int(level)] = catalog
         return hn_dict
 
+def tower_of_hannoi(today=None):
+    """
+    monthly/weekly TOH, start on first Sat of month:
+
+        S S M T W T F
+        -------------
+        0 3 2 5 4 7 6 
+        1 3 2 5 4 7 6 
+        1 3 2 5 4 7 6 
+        1 3 2 5 4 7 6 
+       (1 3 2 5 4 7 6)
+
+    from Preston, W. Curtis.  Unix Backup & Recovery.  O'Reilly, 1999.  p.41
+    [modified to start on Saturday]
+    """
+    today = today or date.today()
+    if today.weekday() == calendar.SATURDAY and today.day < 8:
+        return 0
+
+    levels_dict = {
+        calendar.SATURDAY   : 1,
+        calendar.SUNDAY     : 3,
+        calendar.MONDAY     : 2,
+        calendar.TUESDAY    : 5,
+        calendar.WEDNESDAY  : 4,
+        calendar.THURSDAY   : 7,
+        calendar.FRIDAY     : 6,
+    }
+
+    return levels_dict[today.weekday()]
+
+def toh_option(option, opt_str, value, parser, *args, **kwargs):
+    setattr(parser.values, option.dest, tower_of_hannoi())
+
 class BackupConfig(object):
     def __init__(self, args=None):
         self.parse_args(args)
@@ -186,6 +220,11 @@ class BackupConfig(object):
                             help="don't actually do anything")
         parser.add_option("-F", "--time-format", default="%Y%m%d_%H%M",
                             help="format passed to strftime to determine archive dir and name")
+        parser.add_option("--toh", dest='level', action="callback", callback=toh_option,
+                            help="use monthly/weekly tower of hannoi scheme for backup level")
+        parser.add_option("--no-par2", action="store_true", default=False,
+                            help="Don't create par2 redundancy files")
+        parser.add_option("--dump-config", action="store_true")
         self.options, self.args = parser.parse_args(args)
 
     def get_timestamp(self):
