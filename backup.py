@@ -219,9 +219,9 @@ class BackupConfig(object):
         parser.add_option("-n", "--dry-run", action="store_true", default=False,
                             help="don't actually do anything")
         parser.add_option("-F", "--time-format", default="%Y%m%d_%H%M",
-                            help="format passed to strftime to determine archive dir and name")
+                            help="strftime format used to determine archive path")
         parser.add_option("--toh", dest='level', action="callback", callback=toh_option,
-                            help="use monthly/weekly tower of hannoi scheme for backup level")
+                            help="use monthly/weekly tower of hannoi scheme")
         parser.add_option("--no-par2", action="store_true", default=False,
                             help="Don't create par2 redundancy files")
         parser.add_option("--dump-config", action="store_true")
