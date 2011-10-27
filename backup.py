@@ -75,7 +75,7 @@ class LocalHost(object):
         archive = SliceSet(fullpath(basename))
         catalog = SliceSet(fullpath('catalog-' + basename))
 
-        args = [ 'dar', '--create', archive, '--on-fly-isolate', catalog, ]
+        args = [ 'dar', '-Q', '--create', archive, '--on-fly-isolate', catalog, ]
 
         dcf = get_dcf()
         for b in ('c-base', 'encryptionkey', 'compression', name):
@@ -105,7 +105,7 @@ class LocalHost(object):
         if not archive.exists():
             raise RuntimeError("Archive not created")
 
-        if 0 != log_execution([ 'dar', '--test', archive, '--batch', dcf['encryptionkey'], ]):
+        if 0 != log_execution([ 'dar', '-Q', '--test', archive, '--batch', dcf['encryptionkey'], ]):
             raise RuntimeError("Archive failed integrity test")
 
         if self.config.no_par2:
