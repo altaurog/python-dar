@@ -90,6 +90,8 @@ class LocalHost(object):
         if reference:
             # Reference previous backup archive/catalog
             args.extend(['--ref', reference])
+        elif self.level:
+            self.level = 0
 
         log_execution(args, self.config.dry_run)
 
