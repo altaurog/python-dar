@@ -9,9 +9,9 @@ class DarHandler(SocketServer.BaseRequestHandler):
         data = self.request.recv(1024).strip()
         print('got: ' + data)
         if data == 'xform':
-            cmd1 = 'nc -l 41201 | dar_slave archives/remotehost | nc -l 41202'
+            cmd1 = 'nc -dl 41201 | dar_slave archives/remotehost | nc -l 41202'
             print(cmd1)
-            cmd2 = 'nc -l 41200 | dar_xform -s 10k - archives/diffbackup'
+            cmd2 = 'nc -dl 41200 | dar_xform -s 10k - archives/diffbackup'
             print(cmd2)
             proc1 = subprocess.Popen(cmd1, shell=True)
             proc2 = subprocess.Popen(cmd2, shell=True)
@@ -24,7 +24,6 @@ class DarHandler(SocketServer.BaseRequestHandler):
             print('nc-dar_xform returned ' + result)
         else:
             result = 'bad request'
-        self.request.send(result)
         print('send result, exiting handler')
 
 myaddress = ('localhost', 18010)
@@ -57,8 +56,6 @@ def client():
     result1 = proc1.wait()
     print('nc<fifo returned: ' + str(result1))
     print('nc-dar-nc returned: ' + str(result2))
-    result = sock.recv(1024)
-    print('received: ' + result)
     sock.close()
     print('socket closed, exiting')
 
