@@ -1,7 +1,7 @@
 from socket import socket, AF_INET, SOCK_STREAM
 import os, sys
 import SocketServer
-import subprocess
+from subprocess import Popen, PIPE
 
 class DarHandler(SocketServer.BaseRequestHandler):
     def handle(self):
@@ -9,21 +9,25 @@ class DarHandler(SocketServer.BaseRequestHandler):
         data = self.request.recv(1024).strip()
         print('got: ' + data)
         if data == 'xform':
-            cmd1 = 'nc -dl 41201 | dar_slave archives/remotehost | nc -l 41202'
+            cmd1 = 'nc -dl 41201 | dar_slave -Q archives/remotehost | nc -l 41202'
             print(cmd1)
-            cmd2 = 'nc -dl 41200 | dar_xform -s 10k - archives/diffbackup'
+            cmd2 = 'nc -dl 41200 | dar_xform -Q -s 10k - archives/diffbackup'
             print(cmd2)
-            proc1 = subprocess.Popen(cmd1, shell=True)
-            proc2 = subprocess.Popen(cmd2, shell=True)
+            proc1 = Popen(cmd1, shell=True, stderr=PIPE)
+            proc2 = Popen(cmd2, shell=True, stderr=PIPE)
             print('sending port number')
             self.request.send('41200')
             print('waiting')
-            result = str(proc1.wait())
-            print('nc-dar_slave-nc returned ' + result)
-            result = str(proc2.wait())
-            print('nc-dar_xform returned ' + result)
+            out1, err1 = proc1.communicate()
+            print('nc-dar_slave-nc stdout: ' + str(out1))
+            print('nc-dar_slave-nc stderr: ' + str(err1))
+            print('nc-dar_slave-nc returned ' + str(proc1.returncode))
+            out2, err2 = proc2.communicate()
+            print('nc-dar_xform stdout: ' + str(out2))
+            print('nc-dar_xform stderr: ' + str(err2))
+            print('nc-dar_xform returned ' + str(proc2.returncode))
         else:
-            result = 'bad request'
+            self.request.send('bad request')
         print('send result, exiting handler')
 
 myaddress = ('localhost', 18010)
@@ -47,15 +51,19 @@ def client():
         pass
     os.mkfifo('toslave')
     cmd1 = 'nc -w3 localhost 41201 < toslave'
-    cmd2 = 'nc -w3 localhost 41202 | dar -B config/test.dcf -A - -o toslave -c - | nc -w3 localhost ' + port
+    cmd2 = 'nc -d -w3 localhost 41202 | dar -Q -B config/test.dcf -A - -o toslave -c - | nc -w3 localhost ' + port
     print(cmd2)
-    proc1 = subprocess.Popen(cmd1, shell=True)
-    proc2 = subprocess.Popen(cmd2, shell=True)
+    proc1 = Popen(cmd1, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    proc2 = Popen(cmd2, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE)
     print('waiting')
-    result2 = proc2.wait()
-    result1 = proc1.wait()
-    print('nc<fifo returned: ' + str(result1))
-    print('nc-dar-nc returned: ' + str(result2))
+    out2, err2 = proc2.communicate()
+    print('nc-dar-nc stdout: ' + str(out2))
+    print('nc-dar-nc stderr: ' + str(err2))
+    print('nc-dar-nc returned ' + str(proc2.returncode))
+    out1, err1 = proc1.communicate()
+    print('nc<fifo stdout: ' + str(out1))
+    print('nc<fifo stderr: ' + str(err1))
+    print('nc<fifo returned ' + str(proc1.returncode))
     sock.close()
     print('socket closed, exiting')
 
