@@ -41,29 +41,39 @@ class DarHandler(SocketServer.BaseRequestHandler):
             print('accepted on socket 3 from {0!r}'.format(xf_remoteaddr))
             slave_input = si_conn.makefile('rb',0)
 
+            print('spawning dar_xform')
             xf_proc = subprocess.Popen(
-                    ['dar_xform', '-s', '10k', '-', 'archives/diffbackup',],
-                    stdin = xform_input
+                    ['dar_xform', '-Q', '-s', '10k', '-', 'archives/diffbackup',],
+                    stdin = xform_input,
+                    stdout = subprocess.PIPE,
+                    stderr = subprocess.PIPE,
             )
 
+            print('spawning dar_slave')
             slave_proc = subprocess.Popen(
-                    ['dar_slave', 'archives/remotehost'],
-                    stdin = slave_input, stdout = slave_output,
+                    ['dar_slave', '-Q', 'archives/remotehost'],
+                    stdin = slave_input,
+                    stdout = slave_output,
+                    stderr = subprocess.PIPE,
             )
 
-            slave_proc.wait()
-            return_code = xf_proc.wait()
+            print('communicating with dar_slave')
+            print('\n'.join(map(str, slave_proc.communicate())))
+            print('dar_slave returned {0}'.format(slave_proc.returncode))
 
-            print('dar_xform returned {0}'.format(return_code))
-            xf_conn.close()
+            print('communicating with dar_xform')
+            print('\n'.join(map(str, xf_proc.communicate())))
+            print('dar_slave returned {0}'.format(xf_proc.returncode))
+
             si_conn.close()
+            xf_conn.close()
             so_conn.close()
 
             # self.request.send(str(return_code)) # <--- this was the problem'
         else:
             return_code = 'bad request'
             self.request.send(str(return_code))
-        print('send result, exiting handler')
+        print('exiting handler')
 
 server_address = ('localhost', 18010)
 def server():
@@ -89,36 +99,45 @@ def client():
     so_s = socket(AF_INET, SOCK_STREAM)
     so_s.connect(('localhost', int(port)))
     print('connected to socket 2 at {0}'.format(port))
-    slave_output = so_s.makefile('wb',0)
+    slave_output = so_s.makefile('rb',0)
 
     # socket 3 - slave input
     port = sock.recv(1024)
+    si_s = socket(AF_INET, SOCK_STREAM)
+    si_s.connect(('localhost', int(port)))
+    print('connected to socket 3 at {0}'.format(port))
+    slave_input = si_s.makefile('wb', 0)
+
     try:
         os.unlink('toslave')
     except:
         pass
     os.mkfifo('toslave')
-#   si_s = socket(AF_INET, SOCK_STREAM)
-#   si_s.connect(('localhost', int(port)))
-#   slave_input = si_s.makefile('wb',0)
 
-    print('spawning nc to write to socket 3 at {0}'.format(port))
-    nc_proc = subprocess.Popen(
-        'nc -w3 localhost {0} < toslave'.format(port),
-        shell=True # can't figure out how to do this redirection w/o shell
+    print('spawning cat')
+    cat_proc = subprocess.Popen(
+        ['cat', 'toslave'], stdout=slave_input,
+        stderr=subprocess.PIPE, stdin=subprocess.PIPE,
     )
 
+    print('spawning dar')
     dar_proc = subprocess.Popen(
-        ['dar', '-B', 'config/test.dcf', '-c', '-', '-A', '-', '-o', 'toslave'],
+        ['dar', '-Q', '-B', 'config/test.dcf', '-c', '-', '-A', '-', '-o', 'toslave'],
         stdout = dar_output, stdin = slave_output,
+        stderr = subprocess.PIPE
     )
 
-    return_code = dar_proc.wait()
-    print('dar returned {0}'.format(return_code))
-    nc_proc.wait()
+    print('communicating with dar')
+    print('\n'.join(map(str, dar_proc.communicate())))
+    print('dar returned {0}'.format(dar_proc.returncode))
 
-    xf_s.close()
+    print('communicating with cat')
+    print('\n'.join(map(str, cat_proc.communicate())))
+    print('cat returned {0}'.format(cat_proc.returncode))
+
     so_s.close()
+    xf_s.close()
+    si_s.close()
 
     # result = sock.recv(1024)     #<-------------- DON'T DO THIS "
     # print('received: ' + result) #<---/                         "

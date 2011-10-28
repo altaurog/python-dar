@@ -51,9 +51,10 @@ def client():
         pass
     os.mkfifo('toslave')
     cmd1 = 'nc -w3 localhost 41201 < toslave'
+    proc1 = Popen(cmd1, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+
     cmd2 = 'nc -d -w3 localhost 41202 | dar -Q -B config/test.dcf -A - -o toslave -c - | nc -w3 localhost ' + port
     print(cmd2)
-    proc1 = Popen(cmd1, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE)
     proc2 = Popen(cmd2, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE)
     print('waiting')
     out2, err2 = proc2.communicate()
