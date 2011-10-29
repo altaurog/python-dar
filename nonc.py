@@ -4,6 +4,21 @@ import sys
 import SocketServer
 import subprocess
 
+class Subprocess(object):
+    def __init__(self, *args, **kwargs):
+        self.proc = subprocess.Popen(*args, **kwargs)
+        self.name = args[0][0]
+
+    def communicate(self):
+        self.out, self.err = self.proc.communicate()
+        if self.err:
+            print(self.err)
+        if self.out:
+            print(self.out)
+        self.ret = self.proc.returncode
+        if self.ret:
+            print('{0} returned {1}'.format(self.name, self.ret))
+
 class DarHandler(SocketServer.BaseRequestHandler):
     def negotiate_additional_connection(self, count):
         s = socket(AF_INET, SOCK_STREAM)
@@ -19,7 +34,7 @@ class DarHandler(SocketServer.BaseRequestHandler):
             s = self.negotiate_additional_connection(3)
 
             xform_input = s.accept()[0].makefile('rb',0)
-            xf_proc = subprocess.Popen(
+            xf_proc = Subprocess(
                     ['dar_xform', '-Q', '-s', '10k', '-', 'archives/diffbackup',],
                     stdin = xform_input,
                     stdout = subprocess.PIPE,
@@ -28,18 +43,15 @@ class DarHandler(SocketServer.BaseRequestHandler):
 
             slave_output = s.accept()[0].makefile('wb',0)
             slave_input = s.accept()[0].makefile('rb',0)
-            slave_proc = subprocess.Popen(
+            slave_proc = Subprocess(
                     ['dar_slave', '-Q', 'archives/remotehost'],
                     stdin = slave_input,
                     stdout = slave_output,
                     stderr = subprocess.PIPE,
             )
 
-            print slave_proc.communicate()[1],
-            print 'dar_slave returned {0}'.format(slave_proc.returncode)
-
-            print '\n'.join(xf_proc.communicate()),
-            print 'dar_xform returned {0}'.format(xf_proc.returncode)
+            slave_proc.communicate()
+            xf_proc.communicate()
 
             self.request.send('OKBYE')
             s.close()
@@ -79,22 +91,20 @@ def client():
         pass
     os.mkfifo('toslave')
 
-    cat_proc = subprocess.Popen(
+    cat_proc = Subprocess(
         ['cat', 'toslave'], stdout=slave_input,
         stderr=subprocess.PIPE, stdin=subprocess.PIPE,
     )
 
-    dar_proc = subprocess.Popen(
+    dar_proc = Subprocess(
         ['dar', '-Q', '-B', 'config/test.dcf', '-c', '-', '-A', '-', '-o', 'toslave'],
         stdout = dar_output, stdin = slave_output,
         stderr = subprocess.PIPE
     )
 
-    print dar_proc.communicate()[1],
-    print 'dar returned {0}'.format(dar_proc.returncode)
 
-    print cat_proc.communicate()[1],
-    print 'cat returned {0}'.format(cat_proc.returncode)
+    dar_proc.communicate()
+    cat_proc.communicate()
 
     for s in dar_output, slave_output, slave_input:
         s.close()
