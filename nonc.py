@@ -41,7 +41,7 @@ class DarHandler(SocketServer.BaseRequestHandler):
             print '\n'.join(xf_proc.communicate()),
             print 'dar_xform returned {0}'.format(xf_proc.returncode)
 
-            # self.request.send('OKBYE') This doesn't work
+            self.request.send('OKBYE')
             s.close()
         else:
             return_code = 'bad request'
@@ -96,7 +96,10 @@ def client():
     print cat_proc.communicate()[1],
     print 'cat returned {0}'.format(cat_proc.returncode)
 
-    # sock.recv(5)  This doesn't work
+    for s in dar_output, slave_output, slave_input:
+        s.close()
+
+    sock.recv(5)
     sock.close()
     print('socket closed, exiting')
 
