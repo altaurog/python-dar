@@ -5,6 +5,7 @@ from __future__ import print_function
 
 import calendar
 import csv
+import itertools
 import os
 import subprocess
 import socket
@@ -57,6 +58,20 @@ class SliceSet(str):
 
     def slices(self):
         return glob(self + '.*.dar')
+
+    def generate_parfiles(self):
+        for dar_slice in self.slices():
+            if 0 != log_execution(['par2', 'create', '-qq', '-n4', dar_slice[:-4], dar_slice ]):
+                raise RuntimeError("Failed to create parchive redundancy files")
+
+    def parfiles(self):
+        for s in self.slices():
+            for p in glob(s[:-4] + '*.par2'):
+                yield p
+
+    def upload_to_s3(self, uploader):
+        for f in itertools.chain(self.slices(), self.parfiles()):
+            uploader.put(f)
 
 class LocalHost(object):
     def __init__(self, config):
@@ -112,9 +127,7 @@ class LocalHost(object):
 
         if self.config.no_par2:
             return
-        for dar_slice in archive.slices():
-            if 0 != log_execution(['par2', 'create', '-qq', '-n4', dar_slice[:-4], dar_slice ]):
-                raise RuntimeError("Failed to create parchive redundancy files")
+        archive.generate_parfiles()
 
 def quote_command(cmd, *args):
     return ' ' + ' '.join([cmd] + map(quote, args))
