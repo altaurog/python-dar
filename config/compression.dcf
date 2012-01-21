@@ -23,5 +23,14 @@
 -Z "*.mov" 
 -Z "*.rar" 
 -Z "*.jar"
+-Z "*.i"
+-Z "*.deb"
 
 
+-Z "*.pdf.svn-base"
+-Z "*.gif.svn-base"
+-Z "*.png.svn-base"
+-Z "*.tif.svn-base"
+-Z "*.tiff.svn-base"
+-Z "*.jpg.svn-base"
+-Z "*.jpeg.svn-base"
