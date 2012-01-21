@@ -21,6 +21,8 @@ try:
 except ImportError:
     from pipes import quote # python 2
 
+import s3
+
 """
 TODO:
     add archives to dar_manager db
@@ -68,6 +70,10 @@ class SliceSet(str):
         for s in self.slices():
             for p in glob(s[:-4] + '*.par2'):
                 yield p
+
+    def upload(self, uploader):
+        for f in itertools.chain(self.slices(), self.parfiles()):
+            uploader.put(f)
 
 class LocalHost(object):
     def __init__(self, config):
@@ -124,6 +130,11 @@ class LocalHost(object):
         if self.config.no_par2:
             return
         archive.generate_parfiles()
+
+        uplaoder = self.config.get_s3_uploader()
+        if uplaoder:
+            archive.upload(uplaoder)
+
 
 def quote_command(cmd, *args):
     return ' ' + ' '.join([cmd] + map(quote, args))
@@ -236,6 +247,8 @@ class BackupConfig(object):
         parser.add_option("--no-par2", action="store_true", default=False,
                             help="Don't create par2 redundancy files")
         parser.add_option("--dump-config", action="store_true")
+        parser.add_option("-b", "--s3-bucket")
+        parser.add_option("-c", "--s3-credentials")
         self.options, self.args = parser.parse_args(args)
 
     def get_timestamp(self):
@@ -257,6 +270,11 @@ class BackupConfig(object):
 
     def __getattr__(self, attr_name):
         return getattr(self.options, attr_name)
+
+    def get_s3_uploader(self):
+        args = (self.options.s3_bucket, self.options.s3_credentials)
+        if all(args):
+            return s3.Uploader(*args)
 
 def print_f(template, *args, **kwargs):
     print(template.format(*args, **kwargs))
