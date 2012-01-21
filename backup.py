@@ -69,10 +69,6 @@ class SliceSet(str):
             for p in glob(s[:-4] + '*.par2'):
                 yield p
 
-    def upload_to_s3(self, uploader):
-        for f in itertools.chain(self.slices(), self.parfiles()):
-            uploader.put(f)
-
 class LocalHost(object):
     def __init__(self, config):
         if config.options.dump_config:
