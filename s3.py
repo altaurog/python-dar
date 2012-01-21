@@ -1,5 +1,6 @@
 from boto.s3 import connection
 import csv
+import hashlib
 import logging
 import multiprocessing
 import os
@@ -9,7 +10,7 @@ from cStringIO import StringIO
 
 MIN_CHUNK_SIZE = 5 * 2 ** 20
 NUM_WORKERS = multiprocessing.cpu_count() * 2
-logger=multiprocessing.log_to_stderr(logging.DEBUG)
+logger=multiprocessing.log_to_stderr(logging.WARNING)
 
 class MPFile(object):
     def __init__(self, filepath):
@@ -19,11 +20,15 @@ class MPFile(object):
         self.chunk_size = self.filesize // self.num_chunks + 1
 
     def __iter__(self):
+        _md5 = hashlib.md5()
         with open(self.filepath) as f:
             for i in range(1, 1 + self.num_chunks):
-                yield i, f.read(self.chunk_size)
+                data = f.read(self.chunk_size)
+                _md5.update(data)
+                yield i, data
+        self.md5 = _md5.hexdigest()
 
-def worker(queue, mp, num_chunks):
+def worker(queue, mp, filepath, num_chunks):
     while True:
         i, chunk_data = queue.get()
         if i is None:
@@ -37,7 +42,7 @@ def worker(queue, mp, num_chunks):
                     break
                 except Exception, e:
                     logger.warning('Got exception %r' % e)
-                    logger.warning('retrying chunk %d (%d)' % (i,n))
+                    logger.warning('retrying chunk %d/%d of file %s (%d)' % (i, num_chunks, filepath, n))
         
 
 class Uploader(object):
@@ -61,9 +66,9 @@ class Uploader(object):
         queue = multiprocessing.Queue(NUM_WORKERS)
         mp = self.bucket.initiate_multipart_upload(filepath)
         file_chunks = MPFile(filepath)
-        proc_args = (queue, mp, file_chunks.num_chunks)
+        proc_args = (queue, mp, filepath, file_chunks.num_chunks)
         processes = [multiprocessing.Process(target=worker, args=proc_args)
-                    for i in range(NUM_WORKERS)]
+                    for i in range(min(file_chunks.num_chunks, NUM_WORKERS))]
         for p in processes:
             p.start()
 
@@ -77,6 +82,12 @@ class Uploader(object):
             p.join()
 
         mpcomplete = mp.complete_upload()
+        k = self.bucket.get_key(filepath)
+        newk = k.copy(k.bucket.name, k.name) # copy key onto itself to get md5 etag
+        if newk.etag == '"%s"' % file_chunks.md5:
+            logging.info("file %s etag matches: %s, %s" % (filepath, newk.etag, file_chunks.md5))
+        else:
+            logging.error("file %s etag didn't match: %s, %s" % (filepath, newk.etag, file_chunks.md5))
 
     _conn = None
     @property
