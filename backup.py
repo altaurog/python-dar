@@ -29,8 +29,6 @@ TODO:
     test restore procedure
     upload selected archives (home dirs) to amazon s3
     backup remote systems, both linux and windows
-    build dar 2.4.2 and use that
-
 """
 
 
