@@ -1,16 +1,20 @@
-from boto.s3 import connection
 import csv
 import hashlib
 import logging
 import multiprocessing
 import os
 import optparse
+import re
+import time
 from contextlib import closing
 from cStringIO import StringIO
 
+from boto.s3 import connection
+from boto import exception
+
 MIN_CHUNK_SIZE = 5 * 2 ** 20
-NUM_WORKERS = multiprocessing.cpu_count() * 2
-logger=multiprocessing.log_to_stderr(logging.WARNING)
+NUM_WORKERS = multiprocessing.cpu_count() * 4
+logger=multiprocessing.log_to_stderr(logging.INFO)
 
 class MPFile(object):
     def __init__(self, filepath):
@@ -46,25 +50,38 @@ def worker(queue, mp, filepath, num_chunks):
         
 
 class Uploader(object):
-    def __init__(self, bucketname, credentials_path):
+    def __init__(self, bucketname, credentials_path, transforms=[]):
         self.bucketname = bucketname
         with open(os.path.expanduser(credentials_path)) as f:
             rec = csv.DictReader(f).next()
             self.aws_key_id = rec['Access Key Id']
             self.aws_secret = rec['Secret Access Key']
+        self.transforms = transforms + [self.remove_initial_slash]
+
+    def get_keyname(self, filepath):
+        keyname = filepath
+        for t in self.transforms:
+            keyname = t(keyname)
+        return keyname
+
+    initial_slash_re = re.compile(r'^/+')
+    def remove_initial_slash(self, keyname):
+        return self.initial_slash_re.sub('', keyname)
 
     def put(self, filepath):
         logger.info("uploading %s" % filepath)
         filesize = os.stat(filepath).st_size
         if filesize <= MIN_CHUNK_SIZE:
-            k = self.bucket.new_key(filepath)
+            keyname = self.get_keyname(filepath)
+            k = self.bucket.new_key(keyname)
             k.set_contents_from_filename(filepath)
         else:
             self.mpput(filepath)
 
     def mpput(self, filepath):
+        keyname = self.get_keyname(filepath)
         queue = multiprocessing.Queue(NUM_WORKERS)
-        mp = self.bucket.initiate_multipart_upload(filepath)
+        mp = self.bucket.initiate_multipart_upload(keyname)
         file_chunks = MPFile(filepath)
         proc_args = (queue, mp, filepath, file_chunks.num_chunks)
         processes = [multiprocessing.Process(target=worker, args=proc_args)
@@ -78,16 +95,25 @@ class Uploader(object):
         for p in processes:
             queue.put((None,''))
 
+        logger.info("waiting for child processes")
         for p in processes:
             p.join()
 
+        logger.info("completing upload")
         mpcomplete = mp.complete_upload()
-        k = self.bucket.get_key(filepath)
-        newk = k.copy(k.bucket.name, k.name) # copy key onto itself to get md5 etag
-        if newk.etag == '"%s"' % file_chunks.md5:
-            logging.info("file %s etag matches: %s, %s" % (filepath, newk.etag, file_chunks.md5))
-        else:
-            logging.error("file %s etag didn't match: %s, %s" % (filepath, newk.etag, file_chunks.md5))
+        time.sleep(5)
+        logger.info("attempting key copy")
+        try:
+            k = self.bucket.get_key(keyname)
+            logger.debug(k)
+            newk = k.copy(self.bucketname, keyname) # copy key onto itself to get md5 etag
+            logger.debug(newk)
+            if newk.etag == '"%s"' % file_chunks.md5:
+                logger.info("file %s etag matches: %s, %s" % (keyname, newk.etag, file_chunks.md5))
+            else:
+                logger.error("file %s etag didn't match: %s, %s" % (keyname, newk.etag, file_chunks.md5))
+        except exception.S3ResponseError, e:
+            logging.error("An exception occurred: %s" % e)
 
     _conn = None
     @property

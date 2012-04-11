@@ -21,7 +21,6 @@ try:
 except ImportError:
     from pipes import quote # python 2
 
-import s3
 
 """
 TODO:
@@ -272,8 +271,12 @@ class BackupConfig(object):
         return getattr(self.options, attr_name)
 
     def get_s3_uploader(self):
-        args = (self.options.s3_bucket, self.options.s3_credentials)
+        def transform(s):
+            if s.startswith(self.archive_dir):
+                return s.replace(self.archive_dir, '', 1)
+        args = (self.s3_bucket, self.s3_credentials, [transform])
         if all(args):
+            import s3
             return s3.Uploader(*args)
 
 def print_f(template, *args, **kwargs):
