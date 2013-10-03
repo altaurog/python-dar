@@ -1,5 +1,4 @@
-# compression
--y6
+--compression=gzip:5
 
 # don't bother trying to compress these
 -Z "*.pdf" 

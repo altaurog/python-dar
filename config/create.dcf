@@ -14,8 +14,7 @@
 # use par to protect file integrity
 # --execute "par2 c \"%p/%b.%N.par2\" \"%p/%b.%N.%e\""
 
-# compression
--y6
+--compression=gzip:5
 
 # create empty placeholder directories for excluded directories
 --empty-dir
