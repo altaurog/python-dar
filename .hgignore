@@ -1,5 +1,8 @@
 syntax: glob
 *encryptionkey*
+*.pyc
+*.orig
+*.rej
 
 syntax: regexp
 ^archives/
