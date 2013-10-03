@@ -14,17 +14,13 @@
 --prune proc
 --prune sys
 --prune tmp
+--prune mnt
+--prune media
 --prune backup
 --prune var/lib/postgresql/
---prune var/cache/apt/archives/
 
 # home we do separately
 --prune home
-
-# maybe?
---prune var/lib/apt
---prune var/lib/dpkg
---prune var/lib/apt-xapian-index
 
 # http://askubuntu.com/questions/28477/what-is-safe-to-exclude-for-a-full-system-backup
 --prune var/run

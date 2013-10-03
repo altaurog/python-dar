@@ -31,12 +31,6 @@
 --prune tmp
 --prune backup
 --prune var/lib/postgresql/
---prune var/cache/apt/archives/
-
-# maybe?
---prune var/lib/apt
---prune var/lib/dpkg
---prune var/lib/apt-xapian-index
 
 # http://askubuntu.com/questions/28477/what-is-safe-to-exclude-for-a-full-system-backup
 --prune home/*/.gvfs

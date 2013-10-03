@@ -12,11 +12,11 @@
 --prune postgresql/8.4/main
 
 # http://askubuntu.com/questions/28477/what-is-safe-to-exclude-for-a-full-system-backup
---prune .gvfs
---prune .mozilla/firefox/*/Cache
---prune .cache/chromium
---prune .thumbnails
---prune .local/share/Trash
+--prune */.gvfs
+--prune */.mozilla/firefox/*/Cache
+--prune */.cache/chromium
+--prune */.thumbnails
+--prune */.local/share/Trash
 
 -X Thumbs.db
-
+-X *.iso
