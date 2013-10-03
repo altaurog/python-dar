@@ -92,7 +92,7 @@ class LocalHost(object):
         args = [ 'dar', '-Q', '--create', archive, '--on-fly-isolate', catalog, ]
 
         dcf = get_dcf()
-        for b in ('c-base', 'encryptionkey', 'compression', name):
+        for b in ('c-base', 'compression', name):
             args.extend(['--batch', dcf[b],])
 
         if self.level is not None:
@@ -121,7 +121,7 @@ class LocalHost(object):
         if not archive.exists():
             raise RuntimeError("Archive not created")
 
-        if 0 != log_execution([ 'dar', '-Q', '--test', archive, '--batch', dcf['encryptionkey'], ]):
+        if 0 != log_execution([ 'dar', '-Q', '--test', archive, ]):
             raise RuntimeError("Archive failed integrity test")
 
         if self.config.no_par2:
