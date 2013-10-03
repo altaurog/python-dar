@@ -6,6 +6,9 @@
 # create empty placeholder directories for excluded directories
 --empty-dir
 
+# respect cache directory tagging http://www.brynosaurus.com/cachedir/
+--cache-directory-tagging
+
 # unsupported in dar v2.3.9
 # --min-digits 4
 # create an md5 hash of each slice
