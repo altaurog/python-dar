@@ -13,6 +13,8 @@
 --prune dev
 --prune proc
 --prune sys
+--prune run
+--prune sql
 --prune tmp
 --prune mnt
 --prune media
