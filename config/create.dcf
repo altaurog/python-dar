@@ -17,9 +17,6 @@
 # compression
 -y6
 
-# update atime and not ctime
---alter=atime
-
 # create empty placeholder directories for excluded directories
 --empty-dir
 
